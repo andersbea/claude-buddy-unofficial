@@ -1,0 +1,323 @@
+/*
+ * Claude Buddy — a single retro-LCD desk pet, no dashboard.
+ * The device is the whole UI; dev controls live in a settings sheet.
+ */
+:root {
+  --room:   #2a1512;        /* warm reddish backdrop, echoing the desk in the photo */
+  --room-2: #160b0a;
+  --shell:  #121013;        /* device body */
+  --shell-2:#1d1a1e;
+  --screen: #0b0906;        /* LCD background */
+  --phos:   #ec9a4e;        /* amber phosphor — the pet + screen text */
+  --phos-dim:#7a5a36;       /* dimmed phosphor for faint text */
+  --pip-off: #4a3828;       /* empty pip — SOLID so it looks uniform over the bg gradient */
+  --clay:   #d97757;        /* Claude accent — level pill, approve */
+  --heart:  #e7596b;        /* filled mood hearts */
+  --energy: #c9d24a;        /* energy bars (warm green-yellow) */
+  --ok:     #7bd88f;
+  --deny:   #e7596b;
+  --ink:    #f0e6d8;        /* light label text inside the shell */
+  --muted:  #9a8c7e;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(120% 90% at 50% -10%, #3a1d18 0%, var(--room) 38%, var(--room-2) 100%);
+  color: var(--ink);
+  font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.room {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: max(20px, env(safe-area-inset-top)) 5vw max(24px, env(safe-area-inset-bottom));
+}
+
+/* ---------- the device ----------
+ * One fluid font-size drives the whole composition: everything inside is sized
+ * in em, so the pet, gauges, text and spacing scale together. The device fills
+ * the screen — the base scales with viewport width so elements are large, and
+ * the LCD screen flexes to absorb leftover height so there's no dead padding. */
+.device {
+  width: 100%;
+  max-width: 40em;
+  flex: 1;                 /* fill the available height */
+  display: flex;
+  /* width-driven so big phones get big elements; the vh term rescues short
+     (e.g. split-screen) windows so it never needs to scroll */
+  font-size: clamp(15px, min(5.1vw, 3.5vh), 34px);
+}
+/* no card — content sits straight on the background for a terminal feel */
+.bezel {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 0.15em;
+}
+
+/* top status strip */
+.strip {
+  display: flex; align-items: center; gap: 0.6em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-weight: 600; letter-spacing: .04em;
+  padding: 0.15em 0.3em 0.75em;
+}
+.dot { width: 0.52em; height: 0.52em; border-radius: 50%; background: var(--phos-dim); transition: background .3s, box-shadow .3s; }
+.dot.live { background: var(--ok); box-shadow: 0 0 0.6em var(--ok); }
+.name { color: var(--ink); font-size: 0.88em; }
+.state {
+  margin-left: auto;
+  color: var(--muted); text-transform: uppercase; letter-spacing: .1em; font-size: 0.74em;
+}
+.state[data-state="busy"]      { color: var(--phos); }
+.state[data-state="attention"] { color: var(--clay); animation: blink 1s steps(2) infinite; }
+.state[data-state="celebrate"] { color: var(--ok); }
+.state[data-state="dizzy"]     { color: var(--deny); }
+.state[data-state="heart"]     { color: var(--heart); }
+.level {
+  color: #1a0d08; background: var(--clay);
+  padding: 0.15em 0.5em; border-radius: 0.38em; font-size: 0.74em; letter-spacing: .02em;
+}
+.gear {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  color: var(--muted); font-size: 1.1em; line-height: 1; padding: 0.15em; margin: -0.15em -0.15em -0.15em 0;
+}
+.gear:hover { color: var(--ink); }
+
+/* ---------- the LCD screen ---------- */
+.screen {
+  position: relative;
+  /* faint scanlines only — no box, the pet floats on the background */
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 3px);
+  flex: 1;             /* absorbs leftover height so the layout fills the screen */
+  min-height: 7em;
+  display: grid; place-items: center;
+  overflow: hidden;
+}
+.buddy-art {
+  margin: 0;
+  font: 700 1.4em/1.18 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--phos);
+  text-shadow: 0 0 0.5em color-mix(in srgb, var(--phos) 70%, transparent);
+  white-space: pre; letter-spacing: 0.07em;
+}
+
+/* ---------- gauges ---------- */
+.gauges { padding: 0.9em 0.3em 0.3em; display: grid; gap: 0.3em; }
+.gauge {
+  display: grid; grid-template-columns: 3.8em 1fr; align-items: center;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 600;
+}
+.gauge .lbl { color: var(--muted); letter-spacing: .04em; font-size: 0.8em; }
+/* Each pip is one identical element; "filled" is a fill change, not a different
+   glyph — so they always line up. Dots/bars are CSS shapes; hearts reuse a
+   single ♥ glyph and only recolour it. */
+.pips { display: flex; align-items: center; gap: 0.3em; }
+.pips i { flex: none; display: inline-block; line-height: 1; }
+
+/* fed — circles */
+.pips.dot i { width: 0.66em; height: 0.66em; border-radius: 50%; }
+.pips.dot i.on  { background: var(--phos); }
+.pips.dot i.off { background: var(--pip-off); }
+
+/* energy — upright bars */
+.pips.bar i { width: 0.5em; height: 0.84em; border-radius: 0.1em; }
+.pips.bar i.on  { background: var(--energy); }
+.pips.bar i.off { background: var(--pip-off); }
+
+/* mood — same heart glyph throughout, only the colour changes */
+.pips.heart i { font-size: 0.95em; }
+.pips.heart i::before { content: "\2665"; }
+.pips.heart i.on  { color: var(--heart); }
+.pips.heart i.off { color: var(--pip-off); }
+
+/* ---------- counters ---------- */
+.counters {
+  margin: 0.75em 0.3em 0; padding-top: 0.75em;
+  border-top: 1px solid rgba(255,255,255,.06);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.15em 1.35em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-weight: 600;
+  font-size: 0.8em; line-height: 1.7;
+}
+.ctr { display: flex; justify-content: space-between; }
+.ctr .k { color: var(--muted); }
+.ctr .v { color: var(--ink); }
+.counters .ctr:last-child { grid-column: 1 / -1; }
+
+/* ---------- ticker (latest Claude line) ---------- */
+.ticker {
+  margin: 0.75em 0.3em 0; min-height: 1.1em;
+  font-size: 0.8em; color: var(--phos-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- action zone ---------- */
+.action { margin-top: 0.9em; }
+.act {
+  appearance: none; cursor: pointer; width: 100%;
+  border: 0; border-radius: 0.8em; padding: 0.85em;
+  font: 600 1.02em ui-sans-serif, system-ui, sans-serif;
+  transition: filter .15s, transform .05s;
+}
+.act:active { transform: translateY(1px); }
+.act-ok   { background: var(--ok);   color: #06210d; }
+.act-deny { background: var(--deny); color: #2a0509; }
+.act-ok:hover, .act-deny:hover { filter: brightness(1.06); }
+
+/* approval — hidden until a prompt arrives */
+.approval { display: none; }
+.action.pending .approval { display: block; animation: pop .2s ease; }
+
+/* during an approval, the prompt replaces the stats so the layout stays short */
+.info.approving .gauges,
+.info.approving .counters,
+.info.approving .ticker { display: none; }
+
+/* connect button — shown on the main view when no central is connected */
+.action-connect { display: none; }
+.action.connect:not(.pending) .action-connect { display: block; }
+.act-connect { background: var(--clay); color: #1a0d08; }
+.act-connect:hover { filter: brightness(1.07); }
+.approval-head {
+  color: var(--clay); font: 600 0.8em/1 ui-monospace, monospace;
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 0.55em;
+}
+.approval-tool { display: flex; align-items: baseline; gap: 0.6em; margin-bottom: 0.75em; }
+.approval-tool > span { font: 700 1.1em ui-sans-serif, system-ui, sans-serif; }
+.approval-tool code {
+  flex: 1; min-width: 0; color: var(--phos);
+  font: 0.88em ui-monospace, monospace;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hw { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6em; }
+
+/* ---------- landscape / short screens: pet left, info right ----------
+ * Stacking vertically here would force the base font tiny to avoid scrolling.
+ * Two columns roughly halve the height, so the layout breathes and the base
+ * can scale to the available height instead. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .device {
+    max-width: 64em;
+    font-size: clamp(13px, min(2.9vw, 4.4vh), 28px);
+  }
+  .bezel {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    grid-template-rows: auto 1fr;       /* head, then the screen/info row fills */
+    grid-template-areas:
+      "head head"
+      "screen info";
+    column-gap: 1.6em;
+  }
+  .strip   { grid-area: head; }
+  .screen  { grid-area: screen; min-height: 0; } /* stretches to the row; pet stays centered */
+  .info    { grid-area: info; align-self: center; }
+  .gauges  { padding-top: 0; }
+
+  /* settings is a bottom sheet in portrait; on a short landscape screen that
+     leaves no room — center it as a dialog instead */
+  .sheet { place-items: center; }
+  .sheet-panel {
+    width: min(94vw, 640px);
+    max-height: 90vh;
+    border-radius: 16px;
+    padding: 16px 18px;
+  }
+}
+
+/* ---------- settings sheet ---------- */
+.sheet {
+  position: fixed; inset: 0; z-index: 20;
+  background: rgba(8,4,3,.62);
+  display: grid; place-items: end center;
+}
+.sheet[hidden] { display: none; }
+.sheet-panel {
+  width: min(420px, 100%); max-height: 88vh; overflow-y: auto;
+  background: var(--shell); color: var(--ink);
+  border-radius: 18px 18px 0 0;
+  padding: 18px 18px max(18px, env(safe-area-inset-bottom));
+  box-shadow: 0 -20px 60px rgba(0,0,0,.5);
+  animation: rise .22s ease;
+}
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.sheet-head h2 { margin: 0; font-size: 16px; }
+.sheet-close { appearance: none; border: 0; background: transparent; color: var(--muted); font-size: 18px; cursor: pointer; }
+.sheet-close:hover { color: var(--ink); }
+.sheet-panel h3 {
+  font: 600 11px/1 ui-monospace, monospace; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--muted); margin: 20px 0 8px;
+}
+.muted { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn {
+  padding: 9px 13px; border-radius: 9px; cursor: pointer;
+  background: var(--shell-2); color: var(--ink);
+  border: 1px solid rgba(255,255,255,.08); font-size: 14px;
+}
+.btn:hover { border-color: var(--clay); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.primary { background: var(--clay); border-color: var(--clay); color: #1a0d08; font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.07); }
+
+.status {
+  margin-top: 8px; font-size: 12px; color: var(--muted);
+  padding: 7px 10px; border-radius: 8px; background: var(--room-2);
+}
+.status.ok  { color: var(--ok); }
+.status.err { color: var(--deny); }
+
+.field { margin-top: 8px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.field input, .field select {
+  width: 100%; padding: 9px 11px; border-radius: 9px;
+  background: var(--room-2); color: var(--ink); border: 1px solid rgba(255,255,255,.08);
+  font-size: 14px;
+}
+
+.sess { display: flex; gap: 16px; font: 12px ui-monospace, monospace; color: var(--muted); }
+.sess b { color: var(--ink); }
+
+.messages, .log { list-style: none; margin: 0; padding: 0; max-height: 180px; overflow-y: auto; }
+.msg { display: flex; gap: 8px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.06); font-size: 13px; }
+.msg .who {
+  flex: 0 0 auto; font: 10px ui-monospace, monospace; text-transform: uppercase; letter-spacing: .05em;
+  padding: 2px 6px; border-radius: 6px; height: fit-content; background: var(--shell-2); color: var(--muted);
+}
+.msg.you .who { background: color-mix(in srgb, var(--clay) 35%, var(--shell-2)); color: var(--clay); }
+.log {
+  font: 12px ui-monospace, monospace; max-height: 150px;
+  background: var(--room-2); border-radius: 9px; padding: 9px;
+}
+.log li { padding: 1px 0; color: var(--muted); }
+.log .log-ok { color: var(--ok); }
+.log .log-warn { color: #e7b75a; }
+.log .log-err { color: var(--deny); }
+
+/* ---------- motion ---------- */
+@keyframes blink { 50% { opacity: .35; } }
+@keyframes pop  { from { transform: scale(.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes rise { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.device.buzz { animation: shake .4s ease; }
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; }
+}

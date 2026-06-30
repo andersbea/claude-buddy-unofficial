@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Claude Buddy</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <main class="room">
+    <!-- The device is the whole UI. Everything lives on its screen. -->
+    <div class="device" id="device">
+      <div class="bezel">
+        <!-- top status strip -->
+        <header class="strip">
+          <span class="dot" id="conn-dot" title="link status"></span>
+          <span class="name" id="device-name-label">Buddy</span>
+          <span class="state" id="state-badge" data-state="idle">idle</span>
+          <span class="level" id="level-badge">Lv 0</span>
+          <button class="gear" id="btn-settings" title="Settings" aria-label="Settings">⚙</button>
+        </header>
+
+        <!-- the LCD: the living pet -->
+        <div class="screen">
+          <pre id="buddy-art" class="buddy-art"></pre>
+        </div>
+
+        <div class="info">
+        <!-- pet gauges -->
+        <div class="gauges">
+          <div class="gauge"><span class="lbl">mood</span><span class="pips heart" id="gauge-mood"></span></div>
+          <div class="gauge"><span class="lbl">fed</span><span class="pips dot" id="gauge-fed"></span></div>
+          <div class="gauge"><span class="lbl">energy</span><span class="pips bar" id="gauge-energy"></span></div>
+        </div>
+
+        <!-- counters -->
+        <div class="counters">
+          <div class="ctr"><span class="k">approved</span><span class="v" id="st-approved">0</span></div>
+          <div class="ctr"><span class="k">napped</span><span class="v" id="st-napped">0</span></div>
+          <div class="ctr"><span class="k">denied</span><span class="v" id="st-denied">0</span></div>
+          <div class="ctr"><span class="k">tokens</span><span class="v" id="st-tokens">0</span></div>
+          <div class="ctr"><span class="k">today</span><span class="v" id="st-tokens-today">0</span></div>
+        </div>
+
+        <!-- latest Claude line (transcript peek) -->
+        <div class="ticker" id="device-subtitle">waiting for Claude…</div>
+
+        <!-- action zone: shows the approve / deny prompt when one arrives -->
+        <div class="action" id="action">
+          <!-- approval prompt -->
+          <div class="approval" id="approval">
+            <div class="approval-head">Approval needed</div>
+            <div class="approval-tool"><span id="approval-tool">tool</span><code id="approval-hint"></code></div>
+            <div class="hw">
+              <button class="act act-ok" id="btn-approve">A · Approve</button>
+              <button class="act act-deny" id="btn-deny">B · Deny</button>
+            </div>
+          </div>
+
+          <!-- connect (native: re-advertise so Claude can find the buddy) -->
+          <div class="action-connect" id="action-connect">
+            <button class="act act-connect" id="btn-connect">Connect to Claude</button>
+          </div>
+        </div>
+        </div><!-- /.info -->
+      </div>
+    </div>
+  </main>
+
+  <!-- settings sheet: dev controls + transcript, kept off the main view -->
+  <div class="sheet" id="settings-sheet" hidden>
+    <div class="sheet-panel">
+      <div class="sheet-head">
+        <h2>Settings</h2>
+        <button class="sheet-close" id="btn-settings-close" aria-label="Close">✕</button>
+      </div>
+
+      <!-- Native (phone-as-peripheral) mode -->
+      <section id="peripheral-section" hidden>
+        <h3>Buddy device</h3>
+        <p class="muted">This phone advertises as a Bluetooth buddy. Connect to it from Claude Desktop; the A / B buttons send approvals back.</p>
+        <button class="btn primary" id="btn-advertise">Start advertising</button>
+        <div class="row" style="margin-top:8px">
+          <button class="btn" id="btn-disconnect">Disconnect</button>
+          <button class="btn" id="btn-forget">Forget pairing</button>
+        </div>
+        <p class="muted" style="margin-top:8px">Stuck? <b>Forget pairing</b> clears the bond with paired computers (the Mac) so you can re-pair fresh — also Forget it in Claude Desktop.</p>
+        <div class="status" id="peripheral-status">idle</div>
+      </section>
+
+      <!-- Browser (simulator) mode -->
+      <section id="sim-section">
+        <h3>Claude feed</h3>
+        <p class="muted">Streams heartbeat snapshots, turns, and approval prompts using the real wire protocol. Simulated here because a web page can't be a BLE peripheral.</p>
+        <div class="row">
+          <button class="btn primary" id="btn-claude-start">Start Claude feed</button>
+          <button class="btn" id="btn-trigger">Force prompt</button>
+        </div>
+        <div class="status" id="claude-status">stopped</div>
+      </section>
+
+      <!-- Browser (central) mode -->
+      <section id="central-section">
+        <h3>Pair a device</h3>
+        <p class="muted">Connect to a real buddy exposing the Nordic UART Service (e.g. an ESP32). State is mirrored to it; its button presses come back as approvals.</p>
+        <button class="btn primary" id="btn-ble-connect">Connect device</button>
+        <div class="status" id="ble-status">not connected</div>
+      </section>
+
+      <h3>Identity</h3>
+      <div class="field">
+        <label for="device-name">Buddy name</label>
+        <input id="device-name" type="text" value="Buddy" />
+      </div>
+      <div class="field">
+        <label for="species">Pet</label>
+        <select id="species"></select>
+      </div>
+
+      <h3>Session</h3>
+      <div class="sess">
+        <span>sessions <b id="st-total">0</b></span>
+        <span>running <b id="st-running">0</b></span>
+        <span>waiting <b id="st-waiting">0</b></span>
+      </div>
+
+      <h3>Transcript</h3>
+      <ul class="messages" id="messages"></ul>
+
+      <h3>Wire log</h3>
+      <ul class="log" id="log"></ul>
+    </div>
+  </div>
+
+  <script src="js/protocol.js"></script>
+  <script src="js/buddy.js"></script>
+  <script src="js/ble.js"></script>
+  <script src="js/ble-peripheral.js"></script>
+  <script src="js/simulator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
