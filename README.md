@@ -11,6 +11,10 @@ reference — instead of an ESP32, it runs as a **web app** and as an **Android 
 > [`REFERENCE.md`](https://github.com/anthropics/claude-desktop-buddy/blob/main/REFERENCE.md)
 > (a quick pointer + the NUS UUIDs are in [`docs/REFERENCE.md`](docs/REFERENCE.md)).
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Claude Buddy showing a Write permission prompt with Approve / Deny buttons" width="300">
+</p>
+
 ## What it does
 
 - A pixel-LCD pet with the seven canonical states (`sleep · idle · busy · attention ·
