@@ -7,7 +7,9 @@ reference — instead of an ESP32, it runs as a **web app** and as an **Android 
 (via Capacitor) that turns your phone into the BLE buddy device.
 
 > Unofficial and not affiliated with Anthropic. It implements the public Hardware Buddy
-> BLE wire protocol (vendored with attribution in [`docs/REFERENCE.md`](docs/REFERENCE.md)).
+> BLE wire protocol — see the upstream
+> [`REFERENCE.md`](https://github.com/anthropics/claude-desktop-buddy/blob/main/REFERENCE.md)
+> (a quick pointer + the NUS UUIDs are in [`docs/REFERENCE.md`](docs/REFERENCE.md)).
 
 ## What it does
 
@@ -88,3 +90,7 @@ Enable Developer Mode → Developer → Open Hardware Buddy). Scan and connect t
 
 Protocol and concept from Anthropic's [`claude-desktop-buddy`](https://github.com/anthropics/claude-desktop-buddy).
 This project is an independent, unofficial implementation.
+
+## License
+
+[MIT](LICENSE) © 2026 Anders Bea
