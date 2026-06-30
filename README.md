@@ -13,7 +13,10 @@ reference — instead of an ESP32, it runs as a **web app** and as an **Android 
 
 <p align="center">
   <img src="docs/screenshot.png" alt="Claude Buddy showing a Write permission prompt with Approve / Deny buttons" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/screenshot-midnight.png" alt="The same buddy in the midnight theme" width="300">
 </p>
+<p align="center"><em>Default warm theme, and the built-in midnight theme (themes are runtime-toggleable).</em></p>
 
 ## What it does
 
@@ -25,43 +28,52 @@ reference — instead of an ESP32, it runs as a **web app** and as an **Android 
 - Responsive single-screen UI (portrait stacks; landscape puts the pet left, info right).
 - On the phone: shake → dizzy, face-down → nap, and a buzz when a prompt arrives.
 
-## Two forms, one shared `web/`
+## Tech
 
-1. **Browser** — vanilla JS, no build step. Acts as a BLE *central* and uses a built-in
-   simulator as a stand-in Claude feed (a web page can't be a BLE peripheral).
-2. **Android** — the same `web/` wrapped with [Capacitor](https://capacitorjs.com),
-   acting as a BLE *peripheral* so Claude Desktop can connect **to the phone**.
+**React + TypeScript + Vite**, styled with **Tailwind v4** (theming via CSS variables) and
+**Lucide** icons. Tests run on **Vitest** + Testing Library. It ships in two forms from the
+same `src/`:
 
-### Run the browser version
+1. **Browser** — acts as a BLE *central* and uses a built-in simulator as a stand-in Claude
+   feed (a web page can't be a BLE peripheral).
+2. **Android** — wrapped with [Capacitor](https://capacitorjs.com), acting as a BLE
+   *peripheral* so Claude Desktop can connect **to the phone**.
 
-Web Bluetooth needs a secure context (Chrome/Edge over `localhost` or `https`):
+### Develop / test
 
 ```bash
-cd web && python3 -m http.server 8000   # open http://localhost:8000
+npm install
+npm run dev        # Vite dev server (Web Bluetooth needs localhost/https)
+npm test           # Vitest — protocol, stats, and component tests
+npm run typecheck  # tsc --noEmit
+npm run build      # type-check + production build to dist/
 ```
 
-Use **Start Claude feed** to drive the simulated session and **Force prompt** to raise an
-approval.
+In the browser, open ⚙ Settings → **Start Claude feed** to drive the simulated session and
+**Force prompt** to raise an approval. The ⚙ sheet also has a **theme** toggle.
 
 ### Build the Android app
 
 See [`BUILDING-ANDROID.md`](BUILDING-ANDROID.md) for the full walkthrough.
 
 ```bash
-npm install
+npm run build              # build the web app into dist/ (Capacitor's webDir)
 npx cap sync android
-npx cap open android   # then Run ▶ in Android Studio
+npx cap open android       # then Run ▶ in Android Studio
 ```
 
-Re-run `npx cap copy android` after any change under `web/` (the native app serves a copy).
+Re-run `npm run build && npx cap copy android` after web changes (the native app serves a copy of `dist/`).
 
 ## Architecture
 
-Plain `<script>` tags load five files (`web/index.html`), each attaching one global:
-`Protocol` (wire format + line parser), `Buddy` (species + animator), `BleLink` (Web
-Bluetooth central), `ClaudeSimulator` (demo feed), `BlePeripheral` (native peripheral
-bridge), plus the `app.js` wiring IIFE. Everything downstream of `Protocol.LineParser` is
-source-agnostic — the simulator and a real BLE device produce the same parsed objects.
+- `src/lib/` — framework-free, unit-tested core: `protocol.ts` (wire format, `LineParser`,
+  builders — the single source of truth for the NUS UUIDs), `buddy.ts` (species + frames),
+  `stats.ts` (pure gamified-stat math), `simulator.ts` (demo feed), `ble/peripheral.ts`
+  (native plugin bridge). Everything downstream of `LineParser` is source-agnostic.
+- `src/hooks/` — `useBuddy` (orchestrates the message source, connection state, sleep
+  semantics, approvals, and stats), `useBuddyAnimation`, `useTheme`.
+- `src/components/` — small reusable components (`Pips`, `Gauge`, `BuddyScreen`,
+  `ApprovalPrompt`, `SettingsSheet`, `Device`, …); icons come from one place (`src/lib/icons.ts`).
 
 The Android peripheral is a small custom Capacitor plugin in
 `android/app/src/main/java/se/swimbird/claudebuddy/` (`BlePeripheralPlugin.java`) that runs

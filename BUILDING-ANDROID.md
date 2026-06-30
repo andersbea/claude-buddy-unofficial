@@ -4,17 +4,18 @@ This turns the web buddy into a native Android app that advertises the **Nordic
 UART Service** as a BLE **peripheral**, so a central (Claude Desktop, or the web
 app on another machine) can connect to the phone as if it were a real ESP32 buddy.
 
-It is a [Capacitor](https://capacitorjs.com) wrapper around the existing `web/`
-UI. The only thing that changes between web and native is the Bluetooth layer:
+It is a [Capacitor](https://capacitorjs.com) wrapper around the React app
+(`src/`, built to `dist/`). The only thing that changes between web and native is
+the message/Bluetooth layer:
 
-| | Browser (`web/`) | Native (this app) |
+| | Browser | Native (this app) |
 |---|---|---|
-| BLE role | central — dials *out* (`js/ble.js`) | **peripheral** — advertises + accepts (`BlePeripheralPlugin.java`) |
-| Message source | `js/simulator.js` | the connected central's RX writes |
-| Approvals (A/B) | `sim.resolve` / relay | TX **notify** to the central |
+| BLE role | — (uses the simulator) | **peripheral** — advertises + accepts (`BlePeripheralPlugin.java`) |
+| Message source | `src/lib/simulator.ts` | the connected central's RX writes |
+| Approvals (A/B) | `sim.resolve` | TX **notify** to the central |
 
-`js/protocol.js`, `js/buddy.js` and the UI are shared verbatim — `app.js`
-switches behaviour at runtime on `Capacitor.isNativePlatform()`.
+`src/lib/protocol.ts`, `src/lib/buddy.ts` and the components are shared — the
+`useBuddy` hook switches behaviour at runtime on `isNative()`.
 
 ## Why a native app at all
 
@@ -37,8 +38,9 @@ the custom `BlePeripheral` plugin (`android/app/src/main/java/se/swimbird/claude
 
 ```bash
 # from the repo root
-npm install                 # already done once; installs Capacitor
-npx cap sync android        # copy web/ assets + update native project
+npm install                 # installs React/Vite/Capacitor/etc.
+npm run build               # build the web app into dist/ (Capacitor's webDir)
+npx cap sync android        # copy dist/ assets + update native project
 
 # then either:
 npx cap open android        # opens Android Studio → press Run ▶ with phone plugged in
@@ -46,9 +48,10 @@ npx cap open android        # opens Android Studio → press Run ▶ with phone 
 npx cap run android
 ```
 
-After changing anything under `web/`, re-run `npx cap copy android` (or `sync`)
-before rebuilding — the native app serves a *copy* under
-`android/app/src/main/assets/public`.
+After any web change, re-run `npm run build && npx cap copy android` before
+rebuilding — the native app serves a *copy* of `dist/` under
+`android/app/src/main/assets/public`. (Editing `src/` alone does nothing to the
+installed APK until you rebuild + copy.)
 
 ## Using it
 
@@ -58,21 +61,19 @@ before rebuilding — the native app serves a *copy* under
 3. Connect a central to it (see below). Incoming state animates the buddy; the
    **A / B** buttons send approve/deny back to the central.
 
-## End-to-end test loop (no Claude Desktop, no HTTPS needed)
+## End-to-end test loop (no Claude Desktop)
 
-You can verify the whole BLE path using your Mac's web app as the central —
-`localhost` is a secure context, so Web Bluetooth works there without HTTPS:
+The old in-browser "Connect device" central isn't ported to the React app yet, so
+to exercise the phone's BLE path without Claude Desktop, drive it from the Mac
+with a small [`bleak`](https://github.com/hbldh/bleak) script (subscribe to TX,
+send `{"cmd":"status"}` / a `prompt` heartbeat to RX, read the device's replies).
+This is exactly how the protocol path was validated during the bonding/"No
+response" debugging — see the [[build-state]] memory for the scripts and gotchas.
 
-1. **Phone:** Claude Buddy → *Start advertising*.
-2. **Mac:** serve the web app and open it in Chrome:
-   ```bash
-   cd web && python3 -m http.server 8000   # then open http://localhost:8000
-   ```
-3. **Mac:** click **Connect device**, pick "Claude Buddy" from the chooser.
-4. **Mac:** click **Start Claude feed**. The simulated session streams over BLE to
-   the phone — the phone's buddy reacts (busy / attention / etc.).
-5. When an approval is raised, press **A**/**B** *on the phone*; the decision flows
-   back to the Mac as a `permission` response (logged in the Mac's wire log).
+Otherwise, test against **Claude Desktop** directly: enable Developer Mode
+(Help → Troubleshooting), Developer → Open Hardware Buddy, and connect to the
+advertised "Claude …" device. Heads-up: clearing a stale pairing requires
+**System Settings → Bluetooth → Forget**, not just Claude Desktop's "Forget".
 
 This exercises exactly the same wire protocol Claude Desktop uses.
 
