@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Vite build output (regenerate with `npm run build`)
+dist/
+
 # Capacitor / Android build artifacts
 android/build/
 android/app/build/
