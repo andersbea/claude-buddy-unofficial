@@ -4,16 +4,4 @@
  * Import icons from here, never directly from 'lucide-react', so the set is
  * standardized in one place and easy to swap/theme.
  */
-export {
-  Settings,
-  Bluetooth,
-  BluetoothConnected,
-  BluetoothSearching,
-  Check,
-  X,
-  Heart,
-  Plug,
-  RotateCw,
-  Power,
-  Trash2,
-} from 'lucide-react';
+export { Settings, Bluetooth, Check, X } from 'lucide-react';

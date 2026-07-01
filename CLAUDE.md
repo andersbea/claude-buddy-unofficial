@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A reimplementation of `claude-desktop-buddy` (ESP32 firmware for a physical desk pet). It ships in **two forms from one shared React app** under `src/`:
 
-1. **Browser app** — acts as a BLE *central* and uses `src/lib/simulator.ts` as a stand-in Claude feed.
+1. **Browser app** — uses `src/lib/simulator.ts` as a stand-in Claude feed (a web page can't be a BLE peripheral, so this is the demo/design surface).
 2. **Native Android app** — the same app wrapped with **Capacitor**, acting as a BLE *peripheral* so Claude Desktop can connect *to the phone*. See `BUILDING-ANDROID.md`.
 
 Stack: **React + TypeScript + Vite**, **Tailwind v4** (theming via CSS variables), **Lucide** icons, **Vitest** + Testing Library. The repo root holds the Vite + Capacitor project (`package.json`, `vite.config.ts`, `capacitor.config.json`, `android/`); `vite build` outputs to `dist/`, which is Capacitor's `webDir`.
@@ -30,7 +30,7 @@ In the UI, the ⚙ settings sheet has: **Start Claude feed** (simulated session)
 The central design principle: **everything downstream of `protocol.LineParser` is source-agnostic.** Messages are UTF-8 JSON, one object per line, `\n`-terminated. Both message sources (the simulator and a real BLE central) produce the same parsed objects, so the rest of the app doesn't care which is feeding it.
 
 - **`src/lib/`** — framework-free, unit-tested core:
-  - `protocol.ts` — NUS UUIDs (the single source of truth), the seven states, `LineParser` (byte-accumulating parser robust to split multi-byte UTF-8), `encodeLine`, `stateFromSnapshot`, and message builders (`permission`, `setName`, `timeSync`, `ack`, …) with full TS types.
+  - `protocol.ts` — NUS UUIDs (the single source of truth), the seven states, `LineParser` (byte-accumulating parser robust to split multi-byte UTF-8), `encodeLine`, `stateFromSnapshot`, and message builders (`permission`, `timeSync`, `ack`) with full TS types.
   - `buddy.ts` — `SPECIES` (bufo/blip/moth/crab, each with 7 ASCII state animations + tempo) and frame helpers.
   - `stats.ts` — pure gamified-stat reducers/derivations (mood/fed/energy/level → `appr/deny/vel/nap/lvl`).
   - `simulator.ts` — `ClaudeSimulator`: emits the exact JSON Claude Desktop sends; `resolve()` consumes permission responses. Browser only.

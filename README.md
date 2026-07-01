@@ -34,8 +34,8 @@ reference — instead of an ESP32, it runs as a **web app** and as an **Android 
 **Lucide** icons. Tests run on **Vitest** + Testing Library. It ships in two forms from the
 same `src/`:
 
-1. **Browser** — acts as a BLE *central* and uses a built-in simulator as a stand-in Claude
-   feed (a web page can't be a BLE peripheral).
+1. **Browser** — runs a built-in simulator as a stand-in Claude feed (a web page can't be a
+   BLE peripheral, so this is the demo/design surface).
 2. **Android** — wrapped with [Capacitor](https://capacitorjs.com), acting as a BLE
    *peripheral* so Claude Desktop can connect **to the phone**.
 

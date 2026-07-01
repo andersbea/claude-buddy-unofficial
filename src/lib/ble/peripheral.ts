@@ -15,7 +15,6 @@ interface BlePeripheralPlugin {
   startAdvertising(opts: { name: string }): Promise<{ advertising: boolean }>;
   stopAdvertising(): Promise<void>;
   notify(opts: { value: string }): Promise<void>;
-  reconnect(): Promise<{ advertising: boolean }>;
   unpair(): Promise<void>;
   disconnectCentral(): Promise<{ disconnected: number }>;
   forgetClaude(): Promise<{ forgot: number }>;
@@ -58,14 +57,14 @@ export interface PeripheralLink {
   start(name: string): Promise<string>;
   stop(): Promise<void>;
   send(obj: unknown): Promise<void>;
-  /** Drop stale links + re-advertise so a stuck central reconnects cleanly. */
-  reconnect(): Promise<void>;
   /** Erase the OS bond (desktop "Forget") so the next pairing is fresh. */
   unpair(): Promise<void>;
   disconnect(): Promise<{ disconnected: number }>;
   forget(): Promise<{ forgot: number }>;
   advertising(): boolean;
   connected(): boolean;
+  /** Remove the plugin event listeners (call on teardown). */
+  destroy(): Promise<void>;
 }
 
 export function createPeripheralLink(handlers: PeripheralHandlers = {}): PeripheralLink {
@@ -77,19 +76,24 @@ export function createPeripheralLink(handlers: PeripheralHandlers = {}): Periphe
   let advertising = false;
   let connected = false;
 
-  void Plugin.addListener('rx', (ev) => {
-    if (ev?.value) parser.feed(b64ToBytes(ev.value));
-  });
-  void Plugin.addListener('connected', (ev) => {
-    connected = true;
-    parser.reset();
-    handlers.onConnect?.(ev?.deviceId ?? 'central');
-  });
-  void Plugin.addListener('disconnected', (ev) => {
-    connected = false;
-    parser.reset();
-    handlers.onDisconnect?.(ev?.deviceId ?? 'central');
-  });
+  // Keep the listener handles so they can be removed on teardown — otherwise a
+  // remount (incl. React StrictMode's dev double-mount) would stack duplicate
+  // listeners and handle every message more than once.
+  const handles = [
+    Plugin.addListener('rx', (ev) => {
+      if (ev?.value) parser.feed(b64ToBytes(ev.value));
+    }),
+    Plugin.addListener('connected', (ev) => {
+      connected = true;
+      parser.reset();
+      handlers.onConnect?.(ev?.deviceId ?? 'central');
+    }),
+    Plugin.addListener('disconnected', (ev) => {
+      connected = false;
+      parser.reset();
+      handlers.onDisconnect?.(ev?.deviceId ?? 'central');
+    }),
+  ];
 
   return {
     async start(name: string): Promise<string> {
@@ -114,12 +118,13 @@ export function createPeripheralLink(handlers: PeripheralHandlers = {}): Periphe
     async send(obj: unknown): Promise<void> {
       await Plugin.notify({ value: bytesToB64(encodeLine(obj)) });
     },
-    async reconnect(): Promise<void> {
-      const res = await Plugin.reconnect();
-      advertising = !!res?.advertising;
-    },
     async unpair(): Promise<void> {
       await Plugin.unpair();
+    },
+    async destroy(): Promise<void> {
+      for (const h of handles) {
+        try { (await h).remove(); } catch { /* ignore */ }
+      }
     },
     disconnect: () => Plugin.disconnectCentral(),
     forget: () => Plugin.forgetClaude(),

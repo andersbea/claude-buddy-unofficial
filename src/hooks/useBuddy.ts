@@ -215,6 +215,9 @@ export function useBuddy(): BuddyView {
       bump();
       return;
     }
+    // Anything that isn't a time-sync, command, or turn is a heartbeat snapshot
+    // (the desktop's periodic status). The type guards above are exhaustive for
+    // the other shapes, so this cast is safe.
     const snap = msg as Snapshot;
     const active = (snap.running ?? 0) > 0 || (snap.waiting ?? 0) > 0 || !!snap.prompt?.id;
     applySnapshot(snap);
@@ -345,6 +348,11 @@ export function useBuddy(): BuddyView {
       if (sleepTimer.current) clearTimeout(sleepTimer.current);
       if (dataTimer.current) clearTimeout(dataTimer.current);
       simRef.current?.stop();
+      simRef.current = null;
+      // Remove the peripheral's plugin listeners so a remount (incl. StrictMode's
+      // dev double-mount) doesn't leave a second link handling every message.
+      void periRef.current?.destroy();
+      periRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -161,11 +161,6 @@ export function stateFromSnapshot(snap: Snapshot, opts: StateOpts = {}): BuddySt
 export const permission = (id: string, decision: Decision): CommandMessage =>
   ({ cmd: 'permission', id, decision });
 
-export const setName = (name: string): CommandMessage => ({ cmd: 'name', name });
-export const setOwner = (owner: string): CommandMessage => ({ cmd: 'owner', name: owner });
-export const unpair = (): CommandMessage => ({ cmd: 'unpair' });
-export const statusRequest = (): CommandMessage => ({ cmd: 'status' });
-
 /** Time sync the desktop sends on connect: [epoch_seconds, tz_offset_seconds]. */
 export function timeSync(date = new Date()): TimeSyncMessage {
   return { time: [Math.floor(date.getTime() / 1000), -date.getTimezoneOffset() * 60] };
